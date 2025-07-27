@@ -95,6 +95,7 @@ export interface StudentPortfolioData {
     description: string
   }>
   profileImage?: string
+  showProfileImage: boolean
   theme: {
     template: "modern" | "creative" | "academic" | "minimal" | "tech" | "artistic"
     colorScheme: "blue" | "purple" | "green" | "orange" | "pink" | "teal" | "red"
@@ -142,6 +143,7 @@ export const getDefaultStudentData = (): StudentPortfolioData => ({
   certifications: [],
   hobbies: [],
   references: [],
+  showProfileImage: true,
   theme: {
     template: "modern",
     colorScheme: "blue",

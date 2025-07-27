@@ -2,10 +2,9 @@
 
 import React from "react"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   ArrowLeft,
-  Download,
   Upload,
   Eye,
   User,
@@ -22,15 +21,16 @@ import {
   Trophy,
   UserCheck,
   Smile,
+  Save,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "@/components/ui/use-toast"
+import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/hooks/use-toast"
 import { getDefaultStudentData, type StudentPortfolioData } from "./student-portfolio-data"
 import StudentPortfolioPreview from "./student-portfolio-preview"
 import StudentPortfolioPDF from "./student-portfolio-pdf"
 import PortfolioLogo from "./portfolio-logo"
-// import html2pdf from "html2pdf.js"
 
 // Import section components
 import PersonalInfoEditor from "./student-sections/personal-info-editor"
@@ -60,6 +60,7 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
   const [activeSection, setActiveSection] = useState("dashboard")
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const profileUploadRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
   const sections = [
     { id: "dashboard", title: "Dashboard", icon: Home },
@@ -78,8 +79,119 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
     { id: "preview", title: "Preview", icon: Eye },
   ]
 
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    if (!initialData) {
+      const savedData = localStorage.getItem("studentPortfolioData")
+      const savedImage = localStorage.getItem("studentProfileImage")
+
+      if (savedData) {
+        try {
+          const parsedData = JSON.parse(savedData)
+          // Ensure showProfileImage exists in loaded data
+          if (parsedData.showProfileImage === undefined) {
+            parsedData.showProfileImage = true
+          }
+          setPortfolioData(parsedData)
+        } catch (error) {
+          console.error("Error loading saved data:", error)
+        }
+      }
+
+      if (savedImage) {
+        setProfileImage(savedImage)
+      }
+    }
+  }, [initialData])
+
+  // Save data to localStorage whenever data changes
+  useEffect(() => {
+    localStorage.setItem("studentPortfolioData", JSON.stringify(portfolioData))
+  }, [portfolioData])
+
+  // Save profile image to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("studentProfileImage", profileImage)
+  }, [profileImage])
+
   const updateData = (section: string, data: any) => {
     setPortfolioData((prev) => ({ ...prev, [section]: data }))
+  }
+
+  const updateShowProfileImage = (show: boolean) => {
+    setPortfolioData((prev) => ({
+      ...prev,
+      showProfileImage: show,
+    }))
+  }
+
+  const calculateProgress = () => {
+    let completed = 0
+    let total = 0
+
+    // Personal info (required fields) - only count if they have actual content
+    const personalRequired = ["firstName", "lastName", "email", "summary"]
+    personalRequired.forEach((field) => {
+      total++
+      const value = portfolioData.personal[field as keyof typeof portfolioData.personal]
+      if (value && value.trim().length > 0) {
+        completed++
+      }
+    })
+
+    // Education (at least one entry with basic info) - only count if there's meaningful data
+    total++
+    if (portfolioData.education.length > 0) {
+      const firstEducation = portfolioData.education[0]
+      if (
+        firstEducation.university &&
+        firstEducation.university.trim().length > 0 &&
+        firstEducation.degree &&
+        firstEducation.degree.trim().length > 0
+      ) {
+        completed++
+      }
+    }
+
+    // Projects (at least one project with name and description)
+    total++
+    if (portfolioData.projects.length > 0) {
+      const hasCompleteProject = portfolioData.projects.some(
+        (project) =>
+          project.name &&
+          project.name.trim().length > 0 &&
+          project.description &&
+          project.description.trim().length > 0,
+      )
+      if (hasCompleteProject) {
+        completed++
+      }
+    }
+
+    // Skills (at least some technical skills)
+    total++
+    if (portfolioData.skills.technical.length > 0) {
+      completed++
+    }
+
+    // Work Experience (optional but counts if present)
+    total++
+    if (portfolioData.workExperience.length > 0) {
+      const hasCompleteWork = portfolioData.workExperience.some(
+        (work) => work.company && work.company.trim().length > 0 && work.position && work.position.trim().length > 0,
+      )
+      if (hasCompleteWork) {
+        completed++
+      }
+    }
+
+    // Theme selection (always has default, so only count if changed from default)
+    total++
+    if (portfolioData.theme.template !== "modern" || portfolioData.theme.colorScheme !== "blue") {
+      completed++
+    }
+
+    return Math.round((completed / total) * 100)
   }
 
   const downloadProfileFile = () => {
@@ -97,7 +209,7 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `${portfolioData.personal.firstName}_${portfolioData.personal.lastName}_portfolio.profile`
+    a.download = `${portfolioData.personal.firstName || "student"}_${portfolioData.personal.lastName || "portfolio"}.profile`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -158,6 +270,11 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
         // Validate required fields
         if (!profileData.data.personal) {
           throw new Error("Invalid profile file - missing personal information")
+        }
+
+        // Ensure showProfileImage exists
+        if (profileData.data.showProfileImage === undefined) {
+          profileData.data.showProfileImage = true
         }
 
         setPortfolioData(profileData.data)
@@ -237,7 +354,7 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
         root.render(
           React.createElement(StudentPortfolioPDF, {
             data: portfolioData,
-            profileImage: profileImage,
+            profileImage: portfolioData.showProfileImage ? profileImage : "",
           }),
         )
         // Give React time to render
@@ -298,6 +415,8 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
             profileImage={profileImage}
             setProfileImage={setProfileImage}
             updateData={updateData}
+            showProfileImage={portfolioData.showProfileImage}
+            updateShowProfileImage={updateShowProfileImage}
           />
         )
       case "education":
@@ -323,7 +442,12 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
       case "theme":
         return <ThemeEditor data={portfolioData.theme} updateData={updateData} />
       case "preview":
-        return <StudentPortfolioPreview data={portfolioData} profileImage={profileImage} />
+        return (
+          <StudentPortfolioPreview
+            data={portfolioData}
+            profileImage={portfolioData.showProfileImage ? profileImage : ""}
+          />
+        )
       default:
         return <div>Section not found</div>
     }
@@ -341,9 +465,18 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
                 Back to Home
               </Button>
               <PortfolioLogo size={32} />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Student Portfolio Builder</h1>
+                <p className="text-sm text-gray-500">Build your professional portfolio</p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Progress:</span>
+                <Progress value={calculateProgress()} className="w-24" />
+                <span className="text-sm font-medium text-gray-900">{calculateProgress()}%</span>
+              </div>
               <input
                 ref={profileUploadRef}
                 type="file"
@@ -356,7 +489,7 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
                 Upload .profile File
               </Button>
               <Button variant="outline" size="sm" onClick={downloadProfileFile}>
-                <Download className="mr-2 h-4 w-4" />
+                <Save className="mr-2 h-4 w-4" />
                 Save .profile
               </Button>
               <Button size="sm" onClick={downloadPDF} disabled={isGeneratingPDF}>
