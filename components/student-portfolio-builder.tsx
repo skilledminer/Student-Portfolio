@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { ValidatedInput } from "@/components/ui/validated-input"
 import { useToast } from "@/hooks/use-toast"
 import { getDefaultStudentData, type StudentPortfolioData } from "./student-portfolio-data"
 import StudentPortfolioPreview from "./student-portfolio-preview"
@@ -92,6 +93,10 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
           if (parsedData.showProfileImage === undefined) {
             parsedData.showProfileImage = true
           }
+          // Ensure projectName exists
+          if (parsedData.projectName === undefined) {
+            parsedData.projectName = ""
+          }
           setPortfolioData(parsedData)
         } catch (error) {
           console.error("Error loading saved data:", error)
@@ -122,6 +127,13 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
     setPortfolioData((prev) => ({
       ...prev,
       showProfileImage: show,
+    }))
+  }
+
+  const updateProjectName = (name: string) => {
+    setPortfolioData((prev) => ({
+      ...prev,
+      projectName: name,
     }))
   }
 
@@ -195,6 +207,10 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
   }
 
   const downloadProfileFile = () => {
+    const fileName = portfolioData.projectName
+      ? `${portfolioData.projectName}.profile`
+      : `${portfolioData.personal.firstName || "student"}_${portfolioData.personal.lastName || "portfolio"}.profile`
+
     const profileData = {
       version: "1.0",
       createdAt: new Date().toISOString(),
@@ -209,7 +225,7 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `${portfolioData.personal.firstName || "student"}_${portfolioData.personal.lastName || "portfolio"}.profile`
+    a.download = fileName
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -217,7 +233,7 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
 
     toast({
       title: "Profile file downloaded!",
-      description: "You can upload this file later to continue editing.",
+      description: `Saved as ${fileName}`,
     })
   }
 
@@ -275,6 +291,11 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
         // Ensure showProfileImage exists
         if (profileData.data.showProfileImage === undefined) {
           profileData.data.showProfileImage = true
+        }
+
+        // Ensure projectName exists
+        if (profileData.data.projectName === undefined) {
+          profileData.data.projectName = ""
         }
 
         setPortfolioData(profileData.data)
@@ -363,9 +384,13 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
 
       const pdfElement = tempContainer.firstChild as HTMLElement
 
+      const fileName = portfolioData.projectName
+        ? `${portfolioData.projectName}.pdf`
+        : `${portfolioData.personal.firstName}_${portfolioData.personal.lastName}_Portfolio.pdf`
+
       const opt = {
         margin: 0,
-        filename: `${portfolioData.personal.firstName}_${portfolioData.personal.lastName}_Portfolio.pdf`,
+        filename: fileName,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
           scale: 2,
@@ -390,7 +415,7 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
 
       toast({
         title: "PDF Downloaded!",
-        description: "Your portfolio has been saved as a PDF file.",
+        description: `Your portfolio has been saved as ${fileName}`,
       })
     } catch (error) {
       console.error("PDF generation error:", error)
@@ -476,6 +501,15 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
                 <span className="text-sm text-gray-600">Progress:</span>
                 <Progress value={calculateProgress()} className="w-24" />
                 <span className="text-sm font-medium text-gray-900">{calculateProgress()}%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ValidatedInput
+                  type="text"
+                  value={portfolioData.projectName || ""}
+                  onChange={updateProjectName}
+                  watermark="Enter project name (e.g., My Portfolio)"
+                  className="w-40"
+                />
               </div>
               <input
                 ref={profileUploadRef}

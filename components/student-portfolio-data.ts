@@ -1,4 +1,5 @@
 export interface StudentPortfolioData {
+  projectName?: string
   personal: {
     firstName: string
     lastName: string
@@ -105,6 +106,7 @@ export interface StudentPortfolioData {
 }
 
 export const getDefaultStudentData = (): StudentPortfolioData => ({
+  projectName: "",
   personal: {
     firstName: "",
     lastName: "",

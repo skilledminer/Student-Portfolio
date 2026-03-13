@@ -1,23 +1,32 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
-import { Upload, X } from "lucide-react"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
-import type { StudentPortfolioData } from "../student-portfolio-data"
+import { Upload, X, User } from "lucide-react"
+import RichTextEditor from "@/components/ui/rich-text-editor"
+import { ValidatedInput } from "@/components/ui/validated-input"
 
 interface PersonalInfoEditorProps {
-  data: StudentPortfolioData["personal"]
+  data: {
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+    summary: string
+    location: string
+    website: string
+    linkedin: string
+    github: string
+  }
   profileImage: string
   setProfileImage: (image: string) => void
   updateData: (section: string, data: any) => void
-  showProfileImage?: boolean
-  updateShowProfileImage?: (show: boolean) => void
+  showProfileImage: boolean
+  updateShowProfileImage: (show: boolean) => void
 }
 
 export default function PersonalInfoEditor({
@@ -25,25 +34,25 @@ export default function PersonalInfoEditor({
   profileImage,
   setProfileImage,
   updateData,
-  showProfileImage = true,
+  showProfileImage,
   updateShowProfileImage,
 }: PersonalInfoEditorProps) {
   const [dragActive, setDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleInputChange = (field: string, value: string) => {
-    updateData("personal", {
-      ...data,
-      [field]: value,
-    })
+    updateData("personal", { ...data, [field]: value })
   }
 
   const handleImageUpload = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const result = e.target?.result as string
-      setProfileImage(result)
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        setProfileImage(result)
+      }
+      reader.readAsDataURL(file)
     }
-    reader.readAsDataURL(file)
   }
 
   const handleDrag = (e: React.DragEvent) => {
@@ -66,162 +75,170 @@ export default function PersonalInfoEditor({
     }
   }
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       handleImageUpload(e.target.files[0])
     }
   }
 
+  const removeImage = () => {
+    setProfileImage("/placeholder.svg?height=150&width=150")
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">About Me</h2>
-        <p className="text-gray-600">Tell us about yourself and add your contact information.</p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Personal Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-            <CardDescription>Your basic contact details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="firstName">First Name *</Label>
-                <Input
-                  id="firstName"
-                  value={data.firstName}
-                  onChange={(e) => handleInputChange("firstName", e.target.value)}
-                  placeholder="John"
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name *</Label>
-                <Input
-                  id="lastName"
-                  value={data.lastName}
-                  onChange={(e) => handleInputChange("lastName", e.target.value)}
-                  placeholder="Doe"
-                />
-              </div>
-            </div>
-
+      {/* Profile Picture Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={data.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                placeholder="john.doe@email.com"
-              />
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Profile Picture
+              </CardTitle>
+              <CardDescription>Upload a professional photo for your portfolio</CardDescription>
             </div>
-
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={data.phone}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
-                placeholder="+1 (555) 123-4567"
-              />
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="show-profile-image" className="text-sm font-medium">
+                Show in portfolio
+              </Label>
+              <Switch id="show-profile-image" checked={showProfileImage} onCheckedChange={updateShowProfileImage} />
             </div>
-
-            <div>
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={data.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-                placeholder="New York, NY"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Profile Image */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Picture</CardTitle>
-            <CardDescription>Add a professional photo to your portfolio</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Profile Image Toggle */}
-            {updateShowProfileImage && (
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="show-profile-image">Show Profile Picture</Label>
-                  <p className="text-sm text-gray-500">Toggle whether your profile picture appears in your portfolio</p>
-                </div>
-                <Switch id="show-profile-image" checked={showProfileImage} onCheckedChange={updateShowProfileImage} />
-              </div>
-            )}
-
-            {/* Profile Image Upload - Only show if toggle is enabled */}
-            {showProfileImage && (
-              <div>
-                {profileImage && profileImage !== "/placeholder.svg?height=150&width=150" ? (
-                  <div className="relative">
-                    <img
-                      src={profileImage || "/placeholder.svg"}
-                      alt="Profile"
-                      className="w-32 h-32 rounded-full object-cover mx-auto"
-                    />
+          </div>
+        </CardHeader>
+        {showProfileImage && (
+          <CardContent>
+            <div className="flex items-start gap-6">
+              <div className="flex-shrink-0">
+                <div className="relative">
+                  <img
+                    src={profileImage || "/placeholder.svg"}
+                    alt="Profile"
+                    className="h-32 w-32 rounded-full object-cover border-4 border-gray-200"
+                  />
+                  {profileImage !== "/placeholder.svg?height=150&width=150" && (
                     <Button
                       variant="destructive"
                       size="sm"
-                      className="absolute top-0 right-0 rounded-full w-6 h-6 p-0"
-                      onClick={() => setProfileImage("/placeholder.svg?height=150&width=150")}
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                      onClick={removeImage}
                     >
                       <X className="h-3 w-3" />
                     </Button>
-                  </div>
-                ) : (
-                  <div
-                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                      dragActive ? "border-blue-400 bg-blue-50" : "border-gray-300 hover:border-gray-400"
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                    onClick={() => document.getElementById("profile-upload")?.click()}
-                  >
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-600">
-                      <span className="font-medium">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
-                    <input
-                      id="profile-upload"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleFileInput}
-                    />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            )}
+
+              <div className="flex-1">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                    dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400"
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600 mb-2">Drag and drop your image here, or click to browse</p>
+                  <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    Choose File
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">Supports JPG, PNG, GIF up to 5MB</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
-        </Card>
-      </div>
+        )}
+      </Card>
+
+      {/* Basic Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Basic Information</CardTitle>
+          <CardDescription>Your essential contact details and information</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName">First Name *</Label>
+              <ValidatedInput
+                type="text"
+                value={data.firstName}
+                onChange={(value) => handleInputChange("firstName", value)}
+                watermark="Enter your first name (e.g., John)"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last Name *</Label>
+              <ValidatedInput
+                type="text"
+                value={data.lastName}
+                onChange={(value) => handleInputChange("lastName", value)}
+                watermark="Enter your last name (e.g., Doe)"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="email">Email *</Label>
+              <ValidatedInput
+                type="email"
+                value={data.email}
+                onChange={(value) => handleInputChange("email", value)}
+                watermark="Enter your email (e.g., john.doe@gmail.com)"
+                allowCommas={false}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <ValidatedInput
+                type="phone"
+                value={data.phone}
+                onChange={(value) => handleInputChange("phone", value)}
+                watermark="Enter 10-digit phone number"
+                allowCommas={false}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <ValidatedInput
+              type="text"
+              value={data.location}
+              onChange={(value) => handleInputChange("location", value)}
+              watermark="Enter your location (e.g., New York, NY, USA)"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Professional Summary */}
       <Card>
         <CardHeader>
           <CardTitle>Professional Summary *</CardTitle>
-          <CardDescription>
-            Write a compelling summary that highlights your key strengths, experiences, and career goals
-          </CardDescription>
+          <CardDescription>A brief overview of your background, skills, and career objectives</CardDescription>
         </CardHeader>
         <CardContent>
           <RichTextEditor
             value={data.summary}
             onChange={(value) => handleInputChange("summary", value)}
-            placeholder="Write a brief professional summary about yourself, your goals, and what makes you unique..."
+            placeholder="Write a compelling summary highlighting your key strengths, experiences, and career goals. Example: 'Computer Science student with experience in web development and a passion for creating user-friendly applications...'"
             className="w-full"
           />
         </CardContent>
@@ -231,36 +248,36 @@ export default function PersonalInfoEditor({
       <Card>
         <CardHeader>
           <CardTitle>Online Presence</CardTitle>
-          <CardDescription>Add links to your professional profiles and portfolio</CardDescription>
+          <CardDescription>Your professional online profiles and portfolio links</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="website">Personal Website</Label>
-            <Input
-              id="website"
+            <ValidatedInput
+              type="url"
               value={data.website}
-              onChange={(e) => handleInputChange("website", e.target.value)}
-              placeholder="https://johndoe.com"
+              onChange={(value) => handleInputChange("website", value)}
+              watermark="Enter your website URL (e.g., https://johndoe.com)"
             />
           </div>
 
           <div>
             <Label htmlFor="linkedin">LinkedIn Profile</Label>
-            <Input
-              id="linkedin"
+            <ValidatedInput
+              type="url"
               value={data.linkedin}
-              onChange={(e) => handleInputChange("linkedin", e.target.value)}
-              placeholder="https://linkedin.com/in/johndoe"
+              onChange={(value) => handleInputChange("linkedin", value)}
+              watermark="Enter LinkedIn URL (e.g., https://linkedin.com/in/johndoe)"
             />
           </div>
 
           <div>
             <Label htmlFor="github">GitHub Profile</Label>
-            <Input
-              id="github"
+            <ValidatedInput
+              type="url"
               value={data.github}
-              onChange={(e) => handleInputChange("github", e.target.value)}
-              placeholder="https://github.com/johndoe"
+              onChange={(value) => handleInputChange("github", value)}
+              watermark="Enter GitHub URL (e.g., https://github.com/johndoe)"
             />
           </div>
         </CardContent>
