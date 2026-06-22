@@ -83,7 +83,7 @@ export function ValidatedInput({
     // Phone number specific handling
     if (type === "phone") {
       // Only allow digits, spaces, parentheses, hyphens, and plus sign
-      newValue = newValue.replace(/[^0-9\s\-$$$$+]/g, "")
+      newValue = newValue.replace(/[^0-9\s\-()+]/g, "")
 
       // Extract only digits for length checking
       const digitsOnly = newValue.replace(/\D/g, "")

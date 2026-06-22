@@ -397,7 +397,6 @@ export default function StudentPortfolioBuilder({ onBack, initialData }: Student
           useCORS: true,
           allowTaint: true,
           backgroundColor: "white",
-          allowTaint: true,
         },
         jsPDF: {
           unit: "mm",
